@@ -36,12 +36,12 @@ public class AccountQueryHandler implements QueryHandler {
 
     @Override
     public List<BaseEntity> handle(FindAccountByHolderQuery query) {
-        var bankAccount = accountRepository.findByAccountHolder(query.getAccountHolder());
-        if (bankAccount.isEmpty()) {
+        var bankAccounts = accountRepository.findAllByAccountHolder(query.getAccountHolder());
+        if (bankAccounts == null || bankAccounts.isEmpty()) {
             return null;
         }
         List<BaseEntity> bankAccountList = new ArrayList<>();
-        bankAccountList.add(bankAccount.get());
+        bankAccounts.forEach(bankAccountList::add);
         return bankAccountList;
     }
 

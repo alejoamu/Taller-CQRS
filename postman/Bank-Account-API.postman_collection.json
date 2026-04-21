@@ -1,0 +1,350 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-bank-account-cqrs",
+    "name": "Bank Account API (CMD + Query)",
+    "description": "Colección alineada con los controladores del proyecto.\n\n**Puertos:** comandos `account.cmd` → `{{baseUrlCmd}}` (5000 por defecto), consultas `account.query` → `{{baseUrlQry}}` (5001).\n\n**CQRS / Kafka:** si ejecutas las consultas justo después del cierre, la proyección puede seguir mostrando la cuenta un tiempo, o devolver 204; los tests aceptan 200 o 204 en los GET.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1 - OpenAccountController",
+      "item": [
+        {
+          "name": "POST Abrir cuenta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 201 Created', function () {",
+                  "    pm.expect(pm.response.code, '¿account.cmd escuchando en baseUrlCmd?').to.eql(201);",
+                  "});",
+                  "if (pm.response.code !== 201) { return; }",
+                  "const body = pm.response.json();",
+                  "pm.test('Respuesta incluye mensaje', function () {",
+                  "    pm.expect(body.message).to.be.a('string');",
+                  "});",
+                  "pm.test('Respuesta incluye id de cuenta generado', function () {",
+                  "    pm.expect(body.id).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.environment.set('accountId', body.id);",
+                  "pm.collectionVariables.set('accountId', body.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountHolder\": \"{{accountHolder}}\",\n  \"accountType\": \"SAVINGS\",\n  \"openingBalance\": 100.0\n}"
+            },
+            "url": "{{baseUrlCmd}}/api/v1/openBankAccount",
+            "description": "Genera un UUID en el servidor y devuelve `id` en el cuerpo (`OpenAccountResponse`). Cuerpo JSON: `accountHolder`, `accountType` (`SAVINGS` | `CURRENT`), `openingBalance`."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2 - DepositFundsController",
+      "item": [
+        {
+          "name": "PUT Depositar fondos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200 OK', function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "});",
+                  "if (pm.response.code !== 200) { return; }",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensaje de éxito', function () {",
+                  "    pm.expect(j.message).to.include('successfully');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 50.0\n}"
+            },
+            "url": "{{baseUrlCmd}}/api/v1/depositFunds/{{accountId}}",
+            "description": "`id` en la ruta; cuerpo: `{ \"amount\": number }`."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3 - WithdrawFundsController",
+      "item": [
+        {
+          "name": "PUT Retirar fondos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200 OK', function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "});",
+                  "if (pm.response.code !== 200) { return; }",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensaje de éxito', function () {",
+                  "    pm.expect(j.message).to.include('successfully');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 25.0\n}"
+            },
+            "url": "{{baseUrlCmd}}/api/v1/withdrawFunds/{{accountId}}",
+            "description": "Misma cuenta; cuerpo: `{ \"amount\": number }`."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4 - CloseAccountController",
+      "item": [
+        {
+          "name": "DELETE Cerrar cuenta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200 OK', function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "});",
+                  "if (pm.response.code !== 200) { return; }",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensaje de cierre', function () {",
+                  "    pm.expect(j.message).to.include('closure');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrlCmd}}/api/v1/closeBankAccount/{{accountId}}",
+            "description": "Sin cuerpo. `id` en la ruta."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5 - AccountLookupController",
+      "item": [
+        {
+          "name": "GET a - Todas las cuentas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const c = pm.response.code;",
+                  "pm.test('HTTP 200 o 204', function () {",
+                  "    pm.expect(c, '¿account.query en baseUrlQry?').to.be.oneOf([200, 204]);",
+                  "});",
+                  "if (c !== 200) { return; }",
+                  "const j = pm.response.json();",
+                  "pm.test('Tiene lista accounts', function () {",
+                  "    pm.expect(j.accounts).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlQry}}/api/v1/bankAccountLookup/",
+            "description": "Lista todas las cuentas en la BD de lectura."
+          },
+          "response": []
+        },
+        {
+          "name": "GET b - Cuenta por ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const c = pm.response.code;",
+                  "pm.test('HTTP 200 o 204', function () {",
+                  "    pm.expect(c).to.be.oneOf([200, 204]);",
+                  "});",
+                  "if (c !== 200) { return; }",
+                  "const j = pm.response.json();",
+                  "pm.test('Cuenta con id esperado', function () {",
+                  "    pm.expect(j.accounts[0].id).to.eql(pm.environment.get('accountId'));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlQry}}/api/v1/bankAccountLookup/byId/{{accountId}}",
+            "description": "Busca por UUID de la cuenta."
+          },
+          "response": []
+        },
+        {
+          "name": "GET c - Cuenta por titular",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200 o 204', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlQry}}/api/v1/bankAccountLookup/byHolder/{{accountHolder}}",
+            "description": "Path: titular exacto (mismo valor que al abrir la cuenta)."
+          },
+          "response": []
+        },
+        {
+          "name": "GET d - Cuentas con balance (GREATER_THAN)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const c = pm.response.code;",
+                  "pm.test('HTTP 200 o 204', function () {",
+                  "    pm.expect(c).to.be.oneOf([200, 204]);",
+                  "});",
+                  "if (c !== 200) { return; }",
+                  "pm.test('Lista accounts', function () {",
+                  "    pm.expect(pm.response.json().accounts).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlQry}}/api/v1/bankAccountLookup/withBalance/GREATER_THAN/100",
+            "description": "Ejemplo: saldo esperado del flujo de prueba 100 + 50 - 25 = 125 > 100. Valores de `equalityType`: `GREATER_THAN`, `LESS_THAN`."
+          },
+          "response": []
+        },
+        {
+          "name": "GET d (alt) - LESS_THAN ejemplo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200 o 204', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlQry}}/api/v1/bankAccountLookup/withBalance/LESS_THAN/10000",
+            "description": "Segundo ejemplo con `LESS_THAN` para el mismo endpoint."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6 - RestoreReadDbController",
+      "item": [
+        {
+          "name": "POST Restaurar BD de lectura",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 201 Created', function () {",
+                  "    pm.expect(pm.response.code).to.eql(201);",
+                  "});",
+                  "if (pm.response.code !== 201) { return; }",
+                  "const j = pm.response.json();",
+                  "pm.test('Mensaje de éxito', function () {",
+                  "    pm.expect(j.message).to.include('restore');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrlCmd}}/api/v1/restoreReadDb",
+            "description": "Sin cuerpo. Respuesta HTTP 201 según el controlador."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "accountHolder",
+      "value": "NewmanTestUser"
+    }
+  ]
+}

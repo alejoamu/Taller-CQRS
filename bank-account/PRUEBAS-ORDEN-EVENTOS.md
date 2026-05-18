@@ -1,5 +1,7 @@
 # Pruebas: orden de consumo de eventos (un solo topic)
 
+Documento técnico de los cambios de código: [CAMBIOS-ORDEN-CONSUMO-EVENTOS.md](./CAMBIOS-ORDEN-CONSUMO-EVENTOS.md).
+
 ## Cambios aplicados (resumen)
 
 - Todos los eventos se publican al topic **`BankAccountEvents`** (`spring.kafka.topic`).
